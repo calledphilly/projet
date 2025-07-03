@@ -18,16 +18,15 @@
       "function": {
         "userGet": {
           "deploymentBucketName": "amplify-amplify-dev-12fc2-deployment",
-          "s3Key": "amplify-builds/userGet-76466d6a64667338786e-build.zip"
+          "s3Key": "amplify-builds/userGet-6439614b4c3747796c69-build.zip"
         },
         "userAdd": {
           "deploymentBucketName": "amplify-amplify-dev-12fc2-deployment",
-          "s3Key": "amplify-builds/userAdd-73795a3647396f506548-build.zip"
+          "s3Key": "amplify-builds/userAdd-6d4c596e535265625359-build.zip"
         }
       },
       "api": {
-        "ADD": {},
-        "GET": {}
+        "handler": {}
       }
     }
   }

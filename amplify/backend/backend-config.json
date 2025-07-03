@@ -1,20 +1,6 @@
 {
   "api": {
-    "ADD": {
-      "dependsOn": [
-        {
-          "attributes": [
-            "Name",
-            "Arn"
-          ],
-          "category": "function",
-          "resourceName": "userAdd"
-        }
-      ],
-      "providerPlugin": "awscloudformation",
-      "service": "API Gateway"
-    },
-    "GET": {
+    "handler": {
       "dependsOn": [
         {
           "attributes": [
@@ -23,6 +9,14 @@
           ],
           "category": "function",
           "resourceName": "userGet"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "userAdd"
         }
       ],
       "providerPlugin": "awscloudformation",
