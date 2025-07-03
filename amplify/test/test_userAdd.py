@@ -1,22 +1,21 @@
-import pytest
+import importlib.util
 import json
-import boto3
 import os
 import sys
-from moto import mock_dynamodb
 import uuid
-import importlib.util
+
+import boto3
+import pytest
+from moto import mock_dynamodb
 
 # Set environment variables for the lambda
 os.environ['AWS_DEFAULT_REGION'] = 'eu-west-1'
 os.environ['USERS_TABLE'] = 'users-dev'
 
-# self.add the lambda source directory to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend', 'function', 'userAdd', 'src'))
 
 def import_add():
-    import sys
     import os
+    import sys
     index_path = os.path.join(os.path.dirname(__file__), '..', 'backend', 'function', 'userAdd', 'src', 'index.py')
     spec = importlib.util.spec_from_file_location("index", index_path)
     index = importlib.util.module_from_spec(spec)
@@ -24,31 +23,46 @@ def import_add():
     spec.loader.exec_module(index)
     return index.add
 
+
 class TestUserAdd:
+
     def setup_method(self, method):
         self.add = import_add()
 
     def setup_table(self):
         """Helper to create the mock DynamoDB users table"""
         dynamodb = boto3.resource('dynamodb', region_name='eu-west-1')
-        table = dynamodb.create_table(
-            TableName='users-dev',
-            KeySchema=[{'AttributeName': 'id', 'KeyType': 'HASH'}],
-            AttributeDefinitions=[
-                {'AttributeName': 'id', 'AttributeType': 'S'},
-                {'AttributeName': 'email', 'AttributeType': 'S'}
-            ],
-            GlobalSecondaryIndexes=[
-                {
-                    'IndexName': 'email',
-                    'KeySchema': [{'AttributeName': 'email', 'KeyType': 'HASH'}],
-                    'Projection': {'ProjectionType': 'ALL'},
-                    'ProvisionedThroughput': {'ReadCapacityUnits': 5, 'WriteCapacityUnits': 5}
-                }
-            ],
-            BillingMode='PROVISIONED',
-            ProvisionedThroughput={'ReadCapacityUnits': 5, 'WriteCapacityUnits': 5}
-        )
+        table = dynamodb.create_table(TableName='users-dev',
+                                      KeySchema=[{
+                                          'AttributeName': 'id',
+                                          'KeyType': 'HASH'
+                                      }],
+                                      AttributeDefinitions=[{
+                                          'AttributeName': 'id',
+                                          'AttributeType': 'S'
+                                      }, {
+                                          'AttributeName': 'email',
+                                          'AttributeType': 'S'
+                                      }],
+                                      GlobalSecondaryIndexes=[{
+                                          'IndexName': 'email',
+                                          'KeySchema': [{
+                                              'AttributeName': 'email',
+                                              'KeyType': 'HASH'
+                                          }],
+                                          'Projection': {
+                                              'ProjectionType': 'ALL'
+                                          },
+                                          'ProvisionedThroughput': {
+                                              'ReadCapacityUnits': 5,
+                                              'WriteCapacityUnits': 5
+                                          }
+                                      }],
+                                      BillingMode='PROVISIONED',
+                                      ProvisionedThroughput={
+                                          'ReadCapacityUnits': 5,
+                                          'WriteCapacityUnits': 5
+                                      })
         table.meta.client.get_waiter('table_exists').wait(TableName='users-dev')
         return table
 
@@ -56,29 +70,27 @@ class TestUserAdd:
     def test_create_user_success(self):
         """Test successful user creation with proper validation"""
         self.table = self.setup_table()
-        
+
         add = self.add
 
-        event = {
-            'body': json.dumps({'email': 'test@example.com'})
-        }
+        event = {'body': json.dumps({'email': 'test@example.com'})}
 
         response = add(event, {})
-        
+
         # Assert response structure
         assert response['statusCode'] == 201
         assert 'headers' in response
         assert 'body' in response
-        
+
         # Assert CORS headers
         assert response['headers']['Access-Control-Allow-Origin'] == '*'
-        
+
         # Assert body content
         body = json.loads(response['body'])
         assert 'id' in body
         assert body['email'] == 'test@example.com'
         assert len(body['id']) == 36  # UUID length
-        
+
         # Verify user was actually created in DynamoDB
         created = self.table.get_item(Key={'id': body['id']})
         assert 'Item' in created
@@ -90,7 +102,7 @@ class TestUserAdd:
         """Test missing email validation"""
         self.setup_table()
         add = self.add
-        
+
         event = {'body': json.dumps({})}
 
         response = add(event, {})
@@ -103,7 +115,7 @@ class TestUserAdd:
         """Test empty email validation"""
         self.setup_table()
         add = self.add
-        
+
         event = {'httpMethod': 'POST', 'body': json.dumps({'email': ''})}
 
         response = add(event, {})
@@ -116,7 +128,7 @@ class TestUserAdd:
         """Test whitespace-only email validation"""
         self.setup_table()
         add = self.add
-        
+
         event = {'httpMethod': 'POST', 'body': json.dumps({'email': '   '})}
 
         response = add(event, {})
@@ -129,17 +141,9 @@ class TestUserAdd:
         """Test invalid email format validation"""
         self.setup_table()
         add = self.add
-        
-        invalid_emails = [
-            'bademail',
-            'bad@email',
-            'bad@.com',
-            '@example.com',
-            'user@',
-            'user@domain',
-            'user..name@domain.com'
-        ]
-        
+
+        invalid_emails = ['bademail', 'bad@email', 'bad@.com', '@example.com', 'user@', 'user@domain', 'user..name@domain.com']
+
         for invalid_email in invalid_emails:
             event = {'httpMethod': 'POST', 'body': json.dumps({'email': invalid_email})}
             response = add(event, {})
@@ -152,15 +156,9 @@ class TestUserAdd:
         """Test various valid email formats"""
         self.setup_table()
         add = self.add
-        
-        valid_emails = [
-            'user@example.com',
-            'test.email@domain.co.uk',
-            'user+tag@example.org',
-            'user123@test-domain.com',
-            'a@b.co'
-        ]
-        
+
+        valid_emails = ['user@example.com', 'test.email@domain.co.uk', 'user+tag@example.org', 'user123@test-domain.com', 'a@b.co']
+
         for valid_email in valid_emails:
             event = {'httpMethod': 'POST', 'body': json.dumps({'email': valid_email})}
             response = add(event, {})
@@ -180,7 +178,7 @@ class TestUserAdd:
 
         event = {'httpMethod': 'POST', 'body': json.dumps({'email': existing_email})}
         response = add(event, {})
-        
+
         assert response['statusCode'] == 409
         body = json.loads(response['body'])
         assert body['error'] == 'User with this email already exists'
@@ -197,7 +195,7 @@ class TestUserAdd:
         # Try to create user with uppercase email - should succeed (case sensitive)
         event = {'httpMethod': 'POST', 'body': json.dumps({'email': 'TEST@EXAMPLE.COM'})}
         response = add(event, {})
-        
+
         assert response['statusCode'] == 201
         body = json.loads(response['body'])
         assert body['email'] == 'TEST@EXAMPLE.COM'
@@ -207,7 +205,7 @@ class TestUserAdd:
         """Test invalid JSON handling"""
         self.setup_table()
         add = self.add
-        
+
         event = {'httpMethod': 'POST', 'body': 'invalid json'}
 
         response = add(event, {})
@@ -220,7 +218,7 @@ class TestUserAdd:
         """Test missing body handling"""
         self.setup_table()
         add = self.add
-        
+
         event = {'httpMethod': 'POST'}
 
         response = add(event, {})
@@ -233,7 +231,7 @@ class TestUserAdd:
         """Test null body handling"""
         self.setup_table()
         add = self.add
-        
+
         event = {'httpMethod': 'POST', 'body': None}
 
         response = add(event, {})
@@ -246,18 +244,12 @@ class TestUserAdd:
         """Test user creation with name field"""
         self.setup_table()
         add = self.add
-        
-        event = {
-            'httpMethod': 'POST',
-            'body': json.dumps({
-                'email': 'test@example.com',
-                'name': 'Jean Dupont'
-            })
-        }
+
+        event = {'httpMethod': 'POST', 'body': json.dumps({'email': 'test@example.com', 'name': 'Jean Dupont'})}
 
         response = add(event, {})
         assert response['statusCode'] == 201
-        
+
         body = json.loads(response['body'])
         assert body['email'] == 'test@example.com'
         assert body['name'] == 'Jean Dupont'
@@ -268,15 +260,9 @@ class TestUserAdd:
         """Test name length validation"""
         self.setup_table()
         add = self.add
-        
+
         long_name = 'A' * 101  # 101 characters
-        event = {
-            'httpMethod': 'POST',
-            'body': json.dumps({
-                'email': 'test@example.com',
-                'name': long_name
-            })
-        }
+        event = {'httpMethod': 'POST', 'body': json.dumps({'email': 'test@example.com', 'name': long_name})}
 
         response = add(event, {})
         assert response['statusCode'] == 400
@@ -288,22 +274,24 @@ class TestUserAdd:
         """Test that self.additional fields are ignored for security"""
         self.setup_table()
         add = self.add
-        
+
         event = {
-            'httpMethod': 'POST',
-            'body': json.dumps({
-                'email': 'test@example.com',
-                'name': 'Test User',
-                'age': 42,
-                'admin': True,
-                'password': 'secret',
-                'extra': 'data'
-            })
+            'httpMethod':
+                'POST',
+            'body':
+                json.dumps({
+                    'email': 'test@example.com',
+                    'name': 'Test User',
+                    'age': 42,
+                    'admin': True,
+                    'password': 'secret',
+                    'extra': 'data'
+                })
         }
 
         response = add(event, {})
         assert response['statusCode'] == 201
-        
+
         body = json.loads(response['body'])
         assert body['email'] == 'test@example.com'
         assert body['name'] == 'Test User'  # Name should be kept
@@ -311,7 +299,7 @@ class TestUserAdd:
         assert 'admin' not in body
         assert 'password' not in body
         assert 'extra' not in body
-        
+
         # Verify only allowed fields are stored
         assert len(body) == 3  # 'id', 'email', and 'name'
 
@@ -320,7 +308,7 @@ class TestUserAdd:
         """Test CORS headers are present in all responses"""
         self.setup_table()
         add = self.add
-        
+
         # Test success case
         event = {'body': json.dumps({'email': 'test@example.com'})}
         response = add(event, {})
@@ -343,7 +331,7 @@ class TestUserAdd:
         self.table = self.setup_table()
         # Delete the table to simulate database error
         self.table.delete()
-        
+
         add = self.add
         event = {'httpMethod': 'POST', 'body': json.dumps({'email': 'test@example.com'})}
 
@@ -357,23 +345,23 @@ class TestUserAdd:
         """Test UUID generation and uniqueness"""
         self.setup_table()
         add = self.add
-        
+
         # Create multiple users and verify UUIDs are unique
         emails = [f'user{i}@example.com' for i in range(5)]
         user_ids = []
-        
+
         for email in emails:
             event = {'httpMethod': 'POST', 'body': json.dumps({'email': email})}
             response = add(event, {})
-            
+
             assert response['statusCode'] == 201
             body = json.loads(response['body'])
             user_id = body['id']
-            
+
             # Verify UUID format
             assert len(user_id) == 36
             assert user_id.count('-') == 4
-            
+
             # Verify uniqueness
             assert user_id not in user_ids
             user_ids.append(user_id)
@@ -383,39 +371,31 @@ class TestUserAdd:
         """Test that email whitespace is properly trimmed"""
         self.setup_table()
         add = self.add
-        
+
         event = {'httpMethod': 'POST', 'body': json.dumps({'email': '  test@example.com  '})}
         response = add(event, {})
-        
+
         assert response['statusCode'] == 201
         body = json.loads(response['body'])
         assert body['email'] == 'test@example.com'  # Should be trimmed
 
+
 # Test fixtures for common test data
 @pytest.fixture
 def valid_create_user_event():
-    return {
-        'httpMethod': 'POST',
-        'body': json.dumps({'email': 'test@example.com'})
-    }
+    return {'httpMethod': 'POST', 'body': json.dumps({'email': 'test@example.com'})}
+
 
 @pytest.fixture
 def invalid_email_event():
-    return {
-        'httpMethod': 'POST',
-        'body': json.dumps({'email': 'invalid-email'})
-    }
+    return {'httpMethod': 'POST', 'body': json.dumps({'email': 'invalid-email'})}
+
 
 @pytest.fixture
 def missing_email_event():
-    return {
-        'httpMethod': 'POST',
-        'body': json.dumps({})
-    }
+    return {'httpMethod': 'POST', 'body': json.dumps({})}
+
 
 @pytest.fixture
 def duplicate_email_event():
-    return {
-        'httpMethod': 'POST',
-        'body': json.dumps({'email': 'existing@example.com'})
-    }
+    return {'httpMethod': 'POST', 'body': json.dumps({'email': 'existing@example.com'})}

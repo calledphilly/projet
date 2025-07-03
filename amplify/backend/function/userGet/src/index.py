@@ -1,7 +1,8 @@
 import json
-import boto3
 import os
 import re
+
+import boto3
 from botocore.exceptions import ClientError
 
 dynamodb = boto3.resource('dynamodb')
@@ -21,54 +22,27 @@ def get(event, context):
         email = query_params.get('email', '').strip()
 
         if not email:
-            return {
-                'statusCode': 400,
-                'headers': headers,
-                'body': json.dumps({'error': 'Email query parameter is required'})
-            }
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Email query parameter is required'})}
 
         if not is_valid_email(email):
-            return {
-                'statusCode': 400,
-                'headers': headers,
-                'body': json.dumps({'error': 'Invalid email format'})
-            }
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Invalid email format'})}
 
         table = dynamodb.Table(USERS_TABLE)
 
-        response = table.query(
-            IndexName=EMAIL_INDEX,
-            KeyConditionExpression=boto3.dynamodb.conditions.Key('email').eq(email)
-        )
+        response = table.query(IndexName=EMAIL_INDEX, KeyConditionExpression=boto3.dynamodb.conditions.Key('email').eq(email))
 
         if response.get('Count', 0) == 0:
-            return {
-                'statusCode': 404,
-                'headers': headers,
-                'body': json.dumps({'error': 'User not found'})
-            }
+            return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'User not found'})}
 
         user = response['Items'][0]
-        return {
-            'statusCode': 200,
-            'headers': headers,
-            'body': json.dumps(user)
-        }
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps(user)}
 
     except ClientError as e:
         print("DynamoDB error:", e)
-        return {
-            'statusCode': 500,
-            'headers': headers,
-            'body': json.dumps({'error': 'Database error: ' + str(e)})
-        }
+        return {'statusCode': 500, 'headers': headers, 'body': json.dumps({'error': 'Database error: ' + str(e)})}
     except Exception as e:
         print("Unhandled exception:", e)
-        return {
-            'statusCode': 500,
-            'headers': headers,
-            'body': json.dumps({'error': 'Internal server error'})
-        }
+        return {'statusCode': 500, 'headers': headers, 'body': json.dumps({'error': 'Internal server error'})}
 
 
 def is_valid_email(email):
