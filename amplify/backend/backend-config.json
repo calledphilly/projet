@@ -1,0 +1,54 @@
+{
+  "function": {
+    "userAdd": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "userGet": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    }
+  },
+  "parameters": {
+    "AMPLIFY_function_userAdd_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "userAdd"
+        }
+      ]
+    },
+    "AMPLIFY_function_userAdd_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "userAdd"
+        }
+      ]
+    },
+    "AMPLIFY_function_userGet_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "userGet"
+        }
+      ]
+    },
+    "AMPLIFY_function_userGet_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "userGet"
+        }
+      ]
+    }
+  },
+  "storage": {
+    "users": {
+      "providerPlugin": "awscloudformation",
+      "service": "DynamoDB"
+    }
+  }
+}
