@@ -5,7 +5,7 @@ import boto3
 
 # dynamodb = boto3.resource("dynamodb")
 # table = dynamodb.Table(os.environ["STORAGE_USERTABLE_NAME"])
-TABLE_NAME = os.environ.get("STORAGE_USERTABLE_NAME", "userTabel-dev")
+TABLE_NAME = os.environ.get("STORAGE_USERTABLE_NAME", "users-dev")
 dynamodb = boto3.resource("dynamodb", region_name="eu-west-1")
 table = dynamodb.Table(TABLE_NAME)
 
@@ -22,8 +22,8 @@ def handler(event, context):
             "body": json.dumps({"error": "Missing 'email' in request"})
         }
 
-    user_id = str(uuid.uuid4())
-    table.put_item(Item={"userId": user_id, "email": email})
+    id = str(uuid.uuid4())
+    table.put_item(Item={"id": id, "email": email})
   
     return {
         'statusCode': 200,
