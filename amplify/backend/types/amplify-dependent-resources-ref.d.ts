@@ -1,4 +1,16 @@
 export type AmplifyDependentResourcesAttributes = {
+  "api": {
+    "ADD": {
+      "ApiId": "string",
+      "ApiName": "string",
+      "RootUrl": "string"
+    },
+    "GET": {
+      "ApiId": "string",
+      "ApiName": "string",
+      "RootUrl": "string"
+    }
+  },
   "function": {
     "userAdd": {
       "Arn": "string",
